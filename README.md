@@ -1,4 +1,4 @@
-#DocUI
+# DocUI
 
 This is a proof of concept Document UI intended to help manage C++ comments
 for students in the UW Bothell GCSDD program.
