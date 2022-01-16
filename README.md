@@ -3,6 +3,8 @@
 This is a proof of concept Document UI intended to help manage C++ comments
 for students in the UW Bothell GCSDD program.
 
+[DocUI demo](https://paytons-epic.github.io/DocUI/)
+
 This is not actually a productivity tool yet, but hopefully it will grow into
 a useful project very soon.
 
@@ -24,7 +26,6 @@ The only permissions that you need right now are:
 
  * repo: all
  * user: only "read:user" so we can get your username for the comments
-
 
 ## How to Use it
  * Copy in your Token in the first box
