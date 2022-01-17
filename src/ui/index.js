@@ -30,6 +30,47 @@ function setup() {
     // Setup the extension Selector
     document.getElementById("ExtSelect").onchange = extChange;
     document.getElementById("ExtSelect").disabled = true;
+
+    // clear the input fields
+    document.getElementById("DueDate").value = "--";
+    document.getElementById("StudentInfo").value = "--";
+    document.getElementById("Description").value = "--";
+
+    document.getElementById("DueDateBtn").disabled = true;
+    document.getElementById("DueDateBtn").onclick = fixDate;
+    document.getElementById("InfoButton").disabled = true;
+    document.getElementById("InfoButton").onclick = fixInfo;
+
+    document.getElementById("SubmitBtn").onclick = submit;
+}
+
+function submit() {
+    let extSelect = document.getElementById("ExtSelect");
+    let filename = extSelect.options[extSelect.selectedIndex].value;
+
+    let author = document.getElementById("StudentInfo").value;
+    let date = document.getElementById("DueDate").value;
+    let description = document.getElementById("Description").value.split('\n');
+
+
+    let comment = makeHeaderComment(filename, author, date, description);
+
+    console.log(comment);
+}
+
+function pushFile() {
+}
+
+function fixDate() {
+    let dueDate = document.getElementById("DueDate");
+    dueDate.value = getSavedDate();
+    dueDate.style.backgroundColor = "gold";
+}
+
+function fixInfo() {
+    let info = document.getElementById("StudentInfo");
+    info.value = getSavedStudentInfo();
+    info.style.backgroundColor = "gold";
 }
 
 function updateToken() {
@@ -73,6 +114,29 @@ async function fileChange() {
     extChange();
 }
 
+function setPropertyBox(correctValue, displayId, readValue, btnId) {
+    let displayElm = document.getElementById(displayId)
+
+    if (!readValue) {
+        document.getElementById(btnId).disabled = false;
+
+        //displayElm.value = correctValue;
+        displayElm.value = "--";
+        displayElm.style.backgroundColor = "orange";
+    } else if (readValue == savedName) {
+        document.getElementById(btnId).disabled = true;
+
+        displayElm.value = readValue;
+        displayElm.style.backgroundColor = "green";
+    } else {
+        document.getElementById(btnId).disabled = false;
+
+        displayElm.value = readValue;
+        displayElm.style.backgroundColor = "red";
+    }
+
+}
+
 async function extChange() {
     let username = document.username;
     let repoName = document.repoName;
@@ -84,11 +148,27 @@ async function extChange() {
     let contents = await getFileContents(username, repoName, filename);
     let comments = getFileHeader(contents).split('\n');
 
-    document.getElementById("StudentInfo").value = readAuthor(comments);
+    let dueDate = readDate(comments);
+    setPropertyBox(getSavedDate(), "DueDate", dueDate, "DueDateBtn");
 
-    document.getElementById("DueDate").value = readDate(comments);
+    let author = readAuthor(comments);
+    setPropertyBox(getSavedStudentInfo(), "StudentInfo", author, "InfoButton");
 
-    document.getElementById("Description").value =  readDescription(comments);
+    let description = readDescription(comments);
+    document.getElementById("Description").value = description;
+}
+
+function getSavedDate() {
+    let savedDate = window.localStorage.getItem("savedDate");
+
+    return formatDate(savedDate);
+}
+
+function getSavedStudentInfo() {
+    let savedName = window.localStorage.getItem("savedName");
+    let savedNumber = window.localStorage.getItem("savedNumber");
+
+    return `${savedName} - ${savedNumber}`;
 }
 
 function readAuthor(comments) {
@@ -186,27 +266,27 @@ async function processFiles() {
     }
 }
 
-function makeHeaderComment(username, filename) {
-    const date = getToday();
+function makeHeaderComment(filename, author, date, description) {
     let output = [];
 
     output.push(`/**`);
-    output.push(` * @file ${filename}`);
-    output.push(` * @author ${username}`);
-    output.push(` * @date ${date}`);
+    output.push(` * @file    ${filename}`);
+    output.push(` * @author  ${author}`);
+    output.push(` * @date    ${date}`);
     output.push(` *`);
-    output.push(` * This is a basic description of the program.`);
+    output = output.concat(description.map(x=> " * " + x));
     output.push(` */`);
 
-    return output.join("<br>");
+    console.log(description.map(x=> " * " + x));
+    return output.join("\n");
 }
 
-function getToday() {
-    const today = new Date();
+function formatDate(date) {
+    date = new Date(date);
 
-    const month = today.toLocaleString('default', {month: 'long'});
-    const day = today.getDate();
-    const year = today.getFullYear();
+    const month = date.toLocaleString('default', {month: 'long'});
+    const day = date.getDate();
+    const year = date.getFullYear();
 
     return `${month} ${day}, ${year}`;
 }
