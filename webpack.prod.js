@@ -12,7 +12,8 @@ module.exports = merge(common, {
     mode: "production",
     output: {
         filename: "[name].[contenthash].bundle.js",
-        path: path.resolve(__dirname, "dist/ui")
+        path: path.resolve(__dirname, "dist/ui"),
+        publicPath: "/DocUI/"
     },
     optimization: {
         minimizer: [ new CssMinimizer(), new TerserPlugin() ],
