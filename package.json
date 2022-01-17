@@ -6,6 +6,7 @@
   "scripts": {
     "start": "webpack serve --config webpack.dev.js --open;",
     "build": "rm -r dist; mkdir dist/; webpack --config webpack.prod.js;",
+    "deploy": "git subtree push --prefix dist/ui origin gh-pages",
     "test": "node index.js"
   },
   "author": "",
