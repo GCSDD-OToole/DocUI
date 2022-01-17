@@ -1,21 +1,35 @@
-import { Octokit, App } from "https://cdn.skypack.dev/octokit";
+import { Octokit, App } from "octokit";
 
 window.addEventListener("DOMContentLoaded", setup);
 
 function setup() {
+    // Load Settings from Local Storage
+    let localStorage = window.localStorage;
+
+    let savedRepo = localStorage.getItem('savedRepo');
+    let savedDate = localStorage.getItem('savedDate');
+    let savedName = localStorage.getItem('savedName');
+
+    // Setup the Authentication Click
     document.getElementById("AccessButton").onclick = accessClick;
-    document.getElementById("FileLoad").onclick = fileLoadClick;
 
-    let loadFileButton = document.getElementById("FileLoad");
-    loadFileButton.disabled = true;
+    // Setup the File Load Selector
+    document.getElementById("FileSelect").onchange = fileChange;
 
+    // Setup the Personal Access Token vars
     let token = document.getElementById("PersonalAccessToken");
     token.onchange = updateToken;
     document.personalAccessToken = token.value;
 
+    // Setup the RepoName vars
     let repoName = document.getElementById("RepoName");
     repoName.onchange = updateRepoName;
+    repoName.value = savedRepo;
     document.repoName = repoName.value;
+
+    // Setup the extension Selector
+    document.getElementById("ExtSelect").onchange = extChange;
+    document.getElementById("ExtSelect").disabled = true;
 }
 
 function updateToken() {
@@ -23,41 +37,98 @@ function updateToken() {
     document.personalAccessToken = token.value;
     document.octokit = undefined;
     document.username = undefined;
-
-    let loadFileButton = document.getElementById("FileLoad");
-    loadFileButton.disabled = true;
 }
 
 function updateRepoName() {
     let repoName = document.getElementById("RepoName");
     document.repoName = repoName.value;
-
-    let loadFileButton = document.getElementById("FileLoad");
-    loadFileButton.disabled = true;
 }
 
-async function fileLoadClick() {
+async function fileChange() {
+    // get the selected fileOption
+    let fileSelect = document.getElementById("FileSelect");
+    let fileOption = fileSelect.options[fileSelect.selectedIndex];
+
+    let extSelect = document.getElementById("ExtSelect");
+    extSelect.options.length = 0;
+
+    // add .h extension to the select box
+    if (fileOption.text.includes(".h")) {
+        let option = document.createElement("option");
+        option.text = ".h";
+        option.value = fileOption.value + ".h";
+        extSelect.add(option);
+    }
+
+    // add .cpp extension to the select box
+    if (fileOption.text.includes(".cpp")) {
+        let option = document.createElement("option");
+        option.text = ".cpp";
+        option.value = fileOption.value + ".cpp";
+        extSelect.add(option);
+    }
+
+    extSelect.disabled = false;
+
+    extChange();
+}
+
+async function extChange() {
     let username = document.username;
     let repoName = document.repoName;
 
-    // get the selected option
-    let select = document.getElementById("FileSelect");
-    let option = select.options[select.selectedIndex];
+    let extSelect = document.getElementById("ExtSelect");
+    let extOption = extSelect.options[extSelect.selectedIndex];
+    let filename = extOption.value;
 
-    // if the selected option has a .h
-    if (option.text.includes(".h")) {
-        let filename = option.value + ".h";
-        let contents = await getFileContents(username, repoName, filename);
-        document.getElementById("hContent").innerHTML = contents;
+    let contents = await getFileContents(username, repoName, filename);
+    let comments = getFileHeader(contents).split('\n');
+
+    document.getElementById("StudentInfo").value = readAuthor(comments);
+
+    document.getElementById("DueDate").value = readDate(comments);
+
+    document.getElementById("Description").value =  readDescription(comments);
+}
+
+function readAuthor(comments) {
+    for (let line of comments) {
+        if (line.startsWith(` * @author`)) {
+            return line.slice(10).trim();
+        }
     }
+}
 
-    // if the selected option has a .cpp
-    if (option.text.includes(".cpp")) {
-        let filename = option.value + ".cpp";
-        let contents = await getFileContents(username, repoName, filename);
-        document.getElementById("cppContent").innerHTML = contents;
+function readDescription(comments) {
+    let description = comments.slice(5, -1);
+    return description.map(x => x.slice(3)).join('\n');
+}
+
+function readDate(comments) {
+    for (let line of comments) {
+        if (line.startsWith(` * @date`)) {
+            return line.slice(8).trim();
+        }
     }
+}
 
+function writeAuthro(comments) {
+    return comments
+}
+
+function writeDescription(comments) {
+    return comments
+}
+
+function writeDate(comments) {
+    return comments
+}
+
+function getFileHeader(contents) {
+    let re = /^\/\*\*[\s\S]*?\*\//;
+    let comments = contents.match(re);
+
+    return contents.search(re) == 0 ? comments[0] : "";
 }
 
 async function accessClick() {
@@ -78,6 +149,8 @@ async function accessClick() {
     }
 
     await processFiles();
+
+    fileChange();
 }
 
 async function processFiles() {
@@ -111,25 +184,6 @@ async function processFiles() {
         option.value = key;
         selectBox.add(option);
     }
-
-    // enable the load button
-    let loadFileButton = document.getElementById("FileLoad");
-    loadFileButton.disabled = false;
-
-
-
-
-
-    //const headers = files.map(x=>makeHeaderComment(username, x)).join("<br><br>");
-
-    //document.getElementById("debugoutput").innerHTML = headers;
-}
-
-function arrayToString(a, ) {
-}
-
-function fileSelect(file) {
-    return '<option value="' + file + '">' + file + "</option>";
 }
 
 function makeHeaderComment(username, filename) {

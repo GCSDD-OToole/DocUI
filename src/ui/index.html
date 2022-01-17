@@ -1,0 +1,76 @@
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+
+    <title></title>
+  </head>
+
+  <body>
+    <div>
+      <a href="/settings">Settings</a>
+    </div>
+    <div>
+      <label for="PersonalAccessToken">Personal Access Token: </label><input id="PersonalAccessToken" type=password></input>
+      <label for="RepoName"> Repository Name:</label><input id="RepoName" type=text></input>
+      <button id="AccessButton">Access Repository</button>
+    </div>
+
+    <hr>
+
+    <div>
+      <label for="FileSelect">File Selection:</label><select id="FileSelect"></select>
+    </div>
+
+    <hr>
+
+    <div>
+      <label for="ExtSelect">Extension: </label>
+      <select id="ExtSelect"></select>
+    </div>
+
+    </br>
+    
+    <div>
+      <label for="DueDate">Due Date:</label>
+    </div>
+    <div>
+      <input id="DueDate" type=text disabled=true></input>
+      <button id="DueDateBtn">fix</button>
+    </div>
+
+    </br>
+
+    <div>
+      <label for="StudentInfo">Author</label>
+    </div>
+    <div>
+      <input id="StudentInfo" type=text disabled=true></input>
+      <button id="InfoButton">fix</button>
+    </div>
+
+    </br>
+
+    <div>
+      <label for="Description">Description</label>
+    </div>
+    <div>
+      <textArea id="Description" rows=10 cols=80 name=description></textArea>
+    </div>
+
+    <hr>
+
+    </br>
+
+    <div>
+      This button will (eventually) push all marked changes to both extensions
+    </div>
+
+    </br>
+
+    <div>
+      <button id="DescriptionBtn">push</button>
+    </div>
+  </body>
+</html>
