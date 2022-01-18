@@ -1,6 +1,8 @@
-import { Octokit, App } from "octokit";
 
 window.addEventListener("DOMContentLoaded", setup);
+
+import { ADT } from "./ADT.js";
+import { authenticator } from "./Authenticator.js";
 
 function setup() {
     // Load Settings from Local Storage
@@ -19,13 +21,13 @@ function setup() {
     // Setup the Personal Access Token vars
     let token = document.getElementById("PersonalAccessToken");
     token.onchange = updateToken;
-    document.personalAccessToken = token.value;
+    authenticator.token = token.value;
 
     // Setup the RepoName vars
     let repoName = document.getElementById("RepoName");
     repoName.onchange = updateRepoName;
     repoName.value = savedRepo;
-    document.repoName = repoName.value;
+    authenticator.repo = repoName.value;
 
     // Setup the extension Selector
     document.getElementById("ExtSelect").onchange = extChange;
@@ -46,22 +48,38 @@ function setup() {
 
 function submit() {
     let extSelect = document.getElementById("ExtSelect");
-    let filename = extSelect.options[extSelect.selectedIndex].value;
 
     let author = document.getElementById("StudentInfo").value;
     let date = document.getElementById("DueDate").value;
     let description = document.getElementById("Description").value.split('\n');
 
+    // get file base
+    let filename = extSelect.options[extSelect.selectedIndex].value;
 
-    let comment = makeHeaderComment(filename, author, date, description);
+    let name = window.localStorage.getItem("savedName");
+    let email = window.localStorage.getItem("savedEmail");
 
-    console.log(comment);
+    pushToAllExt(baseFilename, authro, date, description, name, email);
 }
 
-function pushFile() {
+async function pushToAllExt(baseFilename, author, date, description, name, email) {
+
+    // .h file
+    if (false) {
+        let filename = baseFilename + ".h";
+        let comment = makeHeaderComment(filename, author, date, description);
+        pushFile(filename, content, email, name);
+    }
+
+    // .cpp file
+    if (false) {
+        let filename = baseFilename + ".cpp";
+        let comment = makeHeaderComment(filename, author, date, description);
+        pushFile(username, repo, filename, content, email, name);
+    }
 }
 
-function fixDate() {
+async function fixDate() {
     let dueDate = document.getElementById("DueDate");
     dueDate.value = getSavedDate();
     dueDate.style.backgroundColor = "gold";
@@ -74,15 +92,11 @@ function fixInfo() {
 }
 
 function updateToken() {
-    let token = document.getElementById("PersonalAccessToken");
-    document.personalAccessToken = token.value;
-    document.octokit = undefined;
-    document.username = undefined;
+    authenticator.token = document.getElementById("PersonalAccessToken").value;
 }
 
 function updateRepoName() {
-    let repoName = document.getElementById("RepoName");
-    document.repoName = repoName.value;
+    authenticator.repo = document.getElementById("RepoName");
 }
 
 async function fileChange() {
@@ -93,8 +107,11 @@ async function fileChange() {
     let extSelect = document.getElementById("ExtSelect");
     extSelect.options.length = 0;
 
+    let adt = document.adts[fileOption.value];
+
+    console.log(fileOption.value, adt);
     // add .h extension to the select box
-    if (fileOption.text.includes(".h")) {
+    if (adt.hasDotH()) {
         let option = document.createElement("option");
         option.text = ".h";
         option.value = fileOption.value + ".h";
@@ -102,7 +119,7 @@ async function fileChange() {
     }
 
     // add .cpp extension to the select box
-    if (fileOption.text.includes(".cpp")) {
+    if (adt.hasDotCpp()) {
         let option = document.createElement("option");
         option.text = ".cpp";
         option.value = fileOption.value + ".cpp";
@@ -137,15 +154,29 @@ function setPropertyBox(correctValue, displayId, readValue, btnId) {
 
 }
 
+function getSelected(id) {
+    let element = document.getElementById(id);
+    return element.options[element.selectedIndex];
+}
+
 async function extChange() {
+    // TODO
     let username = document.username;
+    // TODO
     let repoName = document.repoName;
 
-    let extSelect = document.getElementById("ExtSelect");
-    let extOption = extSelect.options[extSelect.selectedIndex];
+    let fileOption = getSelected("FileSelect");
+    let adt = document.adts[fileOption.value];
+
+    let extOption = getSelected("ExtSelect");
     let filename = extOption.value;
 
+    // TODO
     let contents = await getFileContents(username, repoName, filename);
+    console.log(contents);
+
+    //adt.updateContents();
+
     let comments = getFileHeader(contents).split('\n');
 
     let dueDate = readDate(comments);
@@ -171,96 +202,34 @@ function getSavedStudentInfo() {
     return `${savedName} - ${savedNumber}`;
 }
 
-function readAuthor(comments) {
-    for (let line of comments) {
-        if (line.startsWith(` * @author`)) {
-            return line.slice(10).trim();
-        }
-    }
-}
-
-function readDescription(comments) {
-    let description = comments.slice(5, -1);
-    return description.map(x => x.slice(3)).join('\n');
-}
-
-function readDate(comments) {
-    for (let line of comments) {
-        if (line.startsWith(` * @date`)) {
-            return line.slice(8).trim();
-        }
-    }
-}
-
-function writeAuthro(comments) {
-    return comments
-}
-
-function writeDescription(comments) {
-    return comments
-}
-
-function writeDate(comments) {
-    return comments
-}
-
-function getFileHeader(contents) {
-    let re = /^\/\*\*[\s\S]*?\*\//;
-    let comments = contents.match(re);
-
-    return contents.search(re) == 0 ? comments[0] : "";
-}
-
 async function accessClick() {
-    if (document.personalAccessToken == "") {
-        document.getElementById("debugoutput").innerHTML = "Please enter a Personal Access Token";
-        return;
-    }
-
-    document.octokit = document.octokit || new Octokit({
-        auth: document.personalAccessToken
-    });
-
-    document.username = document.username || await getUsername();
-
-    if (document.repoName == "") {
-        document.getElementById("debugoutput").innerHTML = "Please enter a repo name";
-        return;
-    }
-
+    await authenticator.connect();
     await processFiles();
-
     fileChange();
 }
 
 async function processFiles() {
+    document.adts = {};
+
     // download a list of files
-    const files = await getFileList(document.repoName, document.username);
+    let files = await authenticator.getFileList();
 
-    // match cpp and h files
-    let fileTypes = {};
+    files = files.map(x => x.split('.'))
+        .filter(x => x.length == 2)
+        .filter(x => x[1] == "h" || x[1] == "cpp");
 
-    for (let file of files) {
-        if (file.endsWith(".cpp")) {
-            let fileBase = file.slice(0, -4);
-            fileTypes[fileBase] = fileTypes[fileBase] || [];
-
-            fileTypes[fileBase].push(".cpp");
-        } else if (file.endsWith(".h")) {
-            let fileBase = file.slice(0, -2);
-            fileTypes[fileBase] = fileTypes[fileBase] || [];
-
-            fileTypes[fileBase].push(".h");
-        }
+    for(let file of files) {
+        document.adts[file[0]] = document.adts[file[0]] || new ADT();
+        document.adts[file[0]].addDocument(...file);
     }
 
     // update the dropdown menu
     let selectBox = document.getElementById("FileSelect");
     selectBox.options.length = 0;
 
-    for (const [key, value] of Object.entries(fileTypes)) {
+    for (const [key, value] of Object.entries(document.adts)) {
         let option = document.createElement("option");
-        option.text = key + " (" + value + ")";
+        option.text = key + " ( " + value.extensions.join(", ") + " )";
         option.value = key;
         selectBox.add(option);
     }
@@ -291,69 +260,3 @@ function formatDate(date) {
     return `${month} ${day}, ${year}`;
 }
 
-async function getUsername() {
-    const {
-        data: {login, name},
-    } = await document.octokit.rest.users.getAuthenticated();
-
-    return login;
-}
-
-async function getName() {
-    const {
-        data: {login, name},
-    } = await document.octokit.rest.users.getAuthenticated();
-
-    return name;
-}
-
-async function getReposList(repo, username) {
-    let { data } = await document.octokit.rest.getRepos({
-        owner : username,
-        repo : repo,
-        path : "",
-    });
-
-    return data
-        .map(x=>x.path)
-        .filter(x=>x.endsWith(".cpp") || x.endsWith(".h"));
-}
-
-async function getFileList(repo, username) {
-    let { data } = await document.octokit.rest.repos.getContent({
-        owner : username,
-        repo : repo,
-        path : "",
-    });
-
-    return data
-        .map(x=>x.path)
-        .filter(x=>x.endsWith(".cpp") || x.endsWith(".h"));
-}
-
-async function getFilename(repo, path, username) {
-    let {
-        data: { filename }
-    } = await document.octokit.rest.repos.getContent({
-        owner : username,
-        repo : repo,
-        path : path,
-    });
-
-    return name;
-}
-
-async function getFileContents(username, repo, filename) {
-    let {
-        data: { name, content }
-    } = await document.octokit.rest.repos.getContent({
-        owner : username,
-        repo : repo,
-        path : filename,
-    });
-
-    content = content.replace(/\s+/g, '');
-    content = atob(content);
-
-    return content;
-}
